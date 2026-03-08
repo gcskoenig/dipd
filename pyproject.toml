@@ -11,7 +11,7 @@ authors = [
 ]
 description = "Disentangling Interactions and Dependencies (DIP) Decomposition."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -20,15 +20,21 @@ classifiers = [
 dependencies = [
   "numpy",
   "pandas",
-  "interpret",
+  "interpret>=0.7.6,<0.8.0",
   "matplotlib",
   "seaborn",
-  "ucimlrepo",
   "tqdm",
   "scipy",
   "scikit-learn",
   "category-encoders",
   "statsmodels",
+]
+
+[tool.hatchling.build]
+exclude = [
+  "**/__pycache__",
+  "**/*.pyc",
+  "**/*.pyo",
 ]
 
 [project.urls]

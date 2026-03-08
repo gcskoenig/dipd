@@ -7,15 +7,17 @@ The DIP decomposition was introduced in [this paper](https://arxiv.org/pdf/2410.
 
 ## Installation
 
-`dipd` is intended to work with **python 3.11.** and newer. 
-It can be installed as follows.
+`dipd` requires **Python 3.11** or newer and can be installed from PyPI:
+```
+pip install dipd
+```
+
+For a development installation, clone the repository and install in editable mode:
 ```
 git clone https://github.com/gcskoenig/dipd
 cd dipd
-pip install .
+pip install -e .
 ```
-
-Soon, the package will also be available on pypi.
 
 ## Usage
 
@@ -60,4 +62,3 @@ The code produces the following plot.
 The plot can be interpreted as follows: Each bar explains one LOCO score as the sum of standalone contribution (gray)
  and the contributions of interactions (green) and dependencies (purple).
  Each bar is visualized as a forceplot, meaning that the direction of each bar indicates the sign, where downward facing bars are negative contributions and upward facing bars positive contributions. The bars sum up to the black horizontal lines, which are the LOCO scores of the features.
-
