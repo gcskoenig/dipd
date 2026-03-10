@@ -16,7 +16,7 @@ def forceplot(data, title, figsize=None, ax=None, split_additive=False, color_di
               total_color=None, fontsize=7, fontname='Helvetica', ylabel='Normalized Scores',
               sort_by='score'):
     """
-    Forecplot that takes the results of decompositions and plots them as a stacked bar plot.
+    Forceplot that takes the results of decompositions and plots them as a stacked bar plot.
     data: pd.DataFrame with the decomposition scores as index and the columns as the features
     """
     if explain_collab and explain_surplus:
@@ -32,8 +32,8 @@ def forceplot(data, title, figsize=None, ax=None, split_additive=False, color_di
 
         BAR_WIDTH = bar_width  # determines width of the bars
         HLINE_WIDTH = hline_width # determines width of the horizontal lines
-        HLINE_THIKNESS = hline_thickness
-        SEPARATOR_IDENT_PROP = separator_ident_prop # determines wie spitz die spitzen sind
+        HLINE_THICKNESS = hline_thickness
+        SEPARATOR_IDENT_PROP = separator_ident_prop # determines pointiness of the bar separators
         if split_additive:
             BAR_WIDTH = BAR_WIDTH / 2
 
@@ -119,7 +119,7 @@ def forceplot(data, title, figsize=None, ax=None, split_additive=False, color_di
             # Base position for the bars
             bar_positions = np.arange(len(feature_names))
             ax.hlines(total_scores[feature_names], bar_positions - HLINE_WIDTH/2 - DELTA_X, bar_positions + HLINE_WIDTH/2 - DELTA_X, color=TOTAL_COLOR,
-                      linewidth=HLINE_THIKNESS)
+                      linewidth=HLINE_THICKNESS)
 
             # Initialize the bottom arrays for stacking
             positive_top = np.array(total_scores[feature_names]) - SEPARATOR_IDENT
@@ -131,7 +131,7 @@ def forceplot(data, title, figsize=None, ax=None, split_additive=False, color_di
                 if center_additive_total:
                     raise NotImplementedError('center_additive_total not implemented yet')
                 ax.hlines(data.loc['main_effect_dependencies',feature_names], bar_positions - HLINE_WIDTH/2 + DELTA_X, bar_positions + HLINE_WIDTH/2 + DELTA_X,
-                          color=COLOR_DICT['main_effect_dependencies'], linewidth=HLINE_THIKNESS)
+                          color=COLOR_DICT['main_effect_dependencies'], linewidth=HLINE_THICKNESS)
 
             first_positive = np.ones(len(bar_positions), dtype=bool)
             first_negative = np.ones(len(bar_positions), dtype=bool)

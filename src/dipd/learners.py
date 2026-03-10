@@ -1,8 +1,13 @@
-import numpy as np
-
+import itertools
 import logging
+import math
 
+import numpy as np
+import pandas as pd
+import statsmodels.formula.api as smf
 from interpret.glassbox import ExplainableBoostingRegressor
+from interpret.utils._clean_x import preclean_X
+from interpret.glassbox._ebm._bin import ebm_eval_terms
 
 class Predictor:
     def __init__(self, interactions=0.95, exclude=None):
@@ -24,11 +29,6 @@ class Predictor:
     def predict_components(self, X, components):
         return sum([self.predict_component(X, c) for c in components])
 
-
-import math
-import itertools
-import pandas as pd
-import statsmodels.formula.api as smf
 
 class LinearGAM(Predictor):
     def __init__(self, interactions=None, exclude=None):
@@ -94,16 +94,12 @@ class LinearGAM(Predictor):
             coef = self.model.params[term]
             if isinstance(component_s, list):
                 prod = X.loc[:, component_s].prod(axis=1)
-                # assert len(component_s) == 2, 'only pairwise interactions supported'
                 return coef * prod
             else:
                 return coef * X.loc[:, component_s]
         else:
             return pd.Series(0.0, index=X.index)
 
-from interpret.utils._clean_x import preclean_X
-from interpret.glassbox._ebm._bin import ebm_eval_terms
-                
 class EBM(Predictor):
     
     def __init__(self, interactions=0.95, exclude=None):
@@ -122,7 +118,6 @@ class EBM(Predictor):
             if isinstance(component, str):
                 comp_name = component
             elif isinstance(component, list) or isinstance(component, tuple):
-                # component = list(component)
                 component = sorted(component, key=X.columns.tolist().index)
                 comp_name = ' & '.join(component)
             else:
@@ -131,7 +126,7 @@ class EBM(Predictor):
                 comp_index = self.model.term_names_.index(comp_name)
                 comp_names.append(comp_name)
                 comp_ixs.append(comp_index)
-            except Exception as err:
+            except ValueError as err:
                 logging.debug(err)
                 logging.debug(f'Probably, component {comp_name} was not found in the model')
             

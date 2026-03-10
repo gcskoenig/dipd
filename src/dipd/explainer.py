@@ -1,16 +1,10 @@
-import numpy as np
-import pandas as pd
-import scipy.special 
-import math
-import tqdm
 import itertools
 import logging
 import time
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import seaborn as sns
-
+import numpy as np
+import pandas as pd
+import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
@@ -37,12 +31,13 @@ class DIP:
 
     RETURN_NAMES = RETURN_NAMES
 
-    def __init__(self, df, target, learner, test_size=0.2, verbose=False) -> None:
+    def __init__(self, df, target, learner, test_size=0.2, verbose=False, random_state=None) -> None:
         self.df = df
         self.target = target
         self.fs = [col for col in df.columns if col != target]
         self.test_size = test_size
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(df[self.fs], df[target], test_size=test_size)
+        self.random_state = random_state
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(df[self.fs], df[target], test_size=test_size, random_state=random_state)
         self.var_y = np.var(self.y_test)
         self.verbose = verbose
         self.decomps = {}
@@ -68,7 +63,7 @@ class DIP:
             else:
                 self.test_size = test_size
             self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.df[self.fs], self.df[self.target],
-                                                                                    test_size=test_size)
+                                                                                    test_size=test_size, random_state=self.random_state)
             self.var_y = np.var(self.y_test)
             self.clear_cache()
             
@@ -112,7 +107,7 @@ class DIP:
         Returns:
             tuple: The sorted combinations.
         """
-        # TODO accomodate for a conditioning group, make sure that the conditioning is always last but the rest is sorted
+        # TODO accommodate for a conditioning group, make sure that the conditioning is always last but the rest is sorted
         comb_s = tuple(tuple(sorted(c)) for c in comb)
         if not inner_only:
             comb_s = tuple(sorted(comb_s, key=lambda x: (len(x), x)))
@@ -149,8 +144,6 @@ class DIP:
         fs_s = sorted(fs_wo_block)
         terms = sum([list(itertools.combinations(fs_s, d)) for d in range(1, order+1)], [])
         terms = [term for term in terms if term not in exclude]
-        # if order >= 1:
-        #     terms += fs
         return terms
     
     @staticmethod
@@ -305,8 +298,7 @@ class DIP:
         if normalized:
             res = res / self.var_y
         res_return = res.copy()
-        # res_return.drop('var_y', inplace=True)
-        
+
         if return_explanation:
             data = pd.DataFrame({comb_s[1]: res_return}).transpose()
             expl = FeaturewiseExplanation(comb_s[0], data)
@@ -334,9 +326,7 @@ class DIP:
         
         comb = self.__assert_comb_valid(comb)
         return_names = self.RETURN_NAMES.copy()
-        # return_names.append('var_y')
-        
-        # comb = [f for gr in comb for f in gr]
+
         fs = [f for gr in comb for f in gr]
         fs_full = fs + C
         fs_0 = comb[0] + C
@@ -378,8 +368,6 @@ class DIP:
         v_f_GAM = v_f_empty - mean_squared_error(self.y_test, f_GAM.predict(self.X_test[fs_full]) + fC_pred_test)
         v_f1 = v_f_empty - mean_squared_error(self.y_test, f1.predict(self.X_test[fs_0]) + fC_pred_test)
         v_f2 = v_f_empty - mean_squared_error(self.y_test, f2.predict(self.X_test[fs_1]) + fC_pred_test)
-        # v_f_GAM_wo_blocked_add = None
-        # v_f_wo_blocked_int = None
 
         # get the GAM components
         terms_C = self.__get_terms(C, order)
@@ -395,7 +383,6 @@ class DIP:
             g1_test = f_GAM.predict_components(self.X_test, terms_g1)
             g2_test = f_GAM.predict_components(self.X_test, terms_g2)
             
-            # if len(C) > 0:
             g1_train = f_GAM.predict_components(self.X_train, terms_g1)
             g2_train = f_GAM.predict_components(self.X_train, terms_g2)
             
@@ -416,7 +403,6 @@ class DIP:
                                                                 f_wo_blocked_int.predict(self.X_test[fs_full]) + fC_pred_test)
                 
         # if C is not empty, we make the GAM components orthogonal to C to recover uniquness
-        # g1_res_test, g2_res_test, g1_res_train, g2_res_train = (None, None, None, None)
         if len(C) > 0:
                         
             # regressing X_C out of g1
@@ -481,21 +467,10 @@ class DIP:
             print(f'v(comb + C): {v_f} \n v(C): {v_fC} \n  v(comb[0] + C): {v_f1} \n v(comb[1] + C): {v_f2}')
             print(f'Additive Collaboration: {additive_collab} \n Interactive Collaboration: {interactive_collab}')
             print(f'Additive wo Cov: {additive_collab_wo_cov} \n -2*cov(g1, g2): {-2*cov_g1_g2}')
-                     
-        # rescale to proportion of variance of Y 
-        # var_y = np.var(self.y_test)
-        # factor = 1 / var_y
-        # v_f1 *= factor
-        # v_f2 *= factor
-        # additive_collab *= factor
-        # additive_collab_wo_cov *= factor
-        # cov_g1_g2 *= factor
-        # interactive_collab *= factor
-        # v_fC *= factor
-                   
+
         return pd.Series([v_f1, v_f2, v_fC, additive_collab_wo_cov, -2*cov_g1_g2, interactive_collab], index=return_names) 
         
-    def get_all_pairwise(self, only_precomputed=False, return_matrixs=False):
+    def get_all_pairwise(self, only_precomputed=False, return_matrices=False):
         '''
         Gives a detailed decomposition of all features respecting interactions and the dependencies between them
 
@@ -508,8 +483,8 @@ class DIP:
         else:
             combinations = [list(comb) for comb in itertools.combinations(self.fs, 2)]
         
-        if return_matrixs:
-            vars_bivarivate = pd.DataFrame(index=self.fs, columns=self.fs, dtype=float)
+        if return_matrices:
+            vars_bivariate = pd.DataFrame(index=self.fs, columns=self.fs, dtype=float)
             additive_collab = pd.DataFrame(index=self.fs, columns=self.fs, dtype=float)
             neg2_cov_g1_g2 = pd.DataFrame(index=self.fs, columns=self.fs, dtype=float)
             additive_collab_wo_cov = pd.DataFrame(index=self.fs, columns=self.fs, dtype=float)
@@ -518,22 +493,22 @@ class DIP:
             for comb in tqdm.tqdm(combinations):
                 res = self.get(comb)
                 # hacky but works
-                vars_bivarivate.loc[comb[0], comb[0]] = res[self.RETURN_NAMES[0]]
-                vars_bivarivate.loc[comb[1], comb[1]] = res[self.RETURN_NAMES[1]]  
+                vars_bivariate.loc[comb[0], comb[0]] = res[self.RETURN_NAMES[0]]
+                vars_bivariate.loc[comb[1], comb[1]] = res[self.RETURN_NAMES[1]]  
                 # rest                              
-                vars_bivarivate.loc[comb[0], comb[1]] = res.sum(axis=0)
+                vars_bivariate.loc[comb[0], comb[1]] = res.sum(axis=0)
                 additive_collab.loc[comb[0], comb[1]] = res[self.RETURN_NAMES[3]] + res[self.RETURN_NAMES[4]]
                 neg2_cov_g1_g2.loc[comb[0], comb[1]] = res[self.RETURN_NAMES[4]]
                 additive_collab_wo_cov.loc[comb[0], comb[1]] = res[self.RETURN_NAMES[3]]
                 synergetic_collab.loc[comb[0], comb[1]] = res[self.RETURN_NAMES[5]]
                 # make symmetric
-                vars_bivarivate.loc[comb[1], comb[0]] = vars_bivarivate.loc[comb[0], comb[1]]
+                vars_bivariate.loc[comb[1], comb[0]] = vars_bivariate.loc[comb[0], comb[1]]
                 additive_collab.loc[comb[1], comb[0]] = additive_collab.loc[comb[0], comb[1]]
                 neg2_cov_g1_g2.loc[comb[1], comb[0]] = neg2_cov_g1_g2.loc[comb[0], comb[1]]
                 additive_collab_wo_cov.loc[comb[1], comb[0]] = additive_collab_wo_cov.loc[comb[0], comb[1]]
                 synergetic_collab.loc[comb[1], comb[0]] = synergetic_collab.loc[comb[0], comb[1]]
             
-            return vars_bivarivate, additive_collab, synergetic_collab, neg2_cov_g1_g2, additive_collab_wo_cov
+            return vars_bivariate, additive_collab, synergetic_collab, neg2_cov_g1_g2, additive_collab_wo_cov
         else:                
             results = pd.DataFrame(combinations, columns=['feature1', 'feature2'])
             results.set_index(['feature1', 'feature2'], inplace=True)

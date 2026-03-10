@@ -24,9 +24,7 @@ dependencies = [
   "matplotlib",
   "seaborn",
   "tqdm",
-  "scipy",
   "scikit-learn",
-  "category-encoders",
   "statsmodels",
 ]
 
