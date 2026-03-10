@@ -1,10 +1,6 @@
-import pickle
 import numpy as np
-import warnings
 
 import logging
-
-warnings.filterwarnings("ignore", category=UserWarning, lineno=738, message='Missing values detected.')
 
 from interpret.glassbox import ExplainableBoostingRegressor
 
@@ -13,19 +9,6 @@ class Predictor:
         self.interactions = interactions
         self.exclude = exclude
         self.model = None
-
-    @staticmethod
-    def load(s):
-        predictor = Predictor()
-        predictor.model = pickle.loads(s)
-        return predictor
-
-    def pickle(self):
-        s = pickle.dumps(self.model)
-        return s
-
-    def save(self, path):
-        pass
 
     def predict(self, X, **kwargs):
         fs = sorted(list(X.columns))
@@ -48,7 +31,7 @@ import pandas as pd
 import statsmodels.formula.api as smf
 
 class LinearGAM(Predictor):
-    def __init__(self, interactions=None, exclude=[]):
+    def __init__(self, interactions=None, exclude=None):
         if exclude is None:
             exclude = []
         super().__init__(interactions=interactions, exclude=exclude)
@@ -71,7 +54,10 @@ class LinearGAM(Predictor):
         if self.interactions is None and replace_none:
             self.interactions = n_interactions
         
-        assert self.interactions == 0 or self.interactions == n_interactions
+        if self.interactions != 0 and self.interactions != n_interactions:
+            raise ValueError(
+                f'interactions must be 0 or {n_interactions}, got {self.interactions}'
+            )
         
     @staticmethod
     def __get_formula(terms):

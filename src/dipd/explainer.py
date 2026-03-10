@@ -21,9 +21,6 @@ from dipd.consts import RETURN_NAMES
 
 logger = logging.getLogger('dipd')
 
-interpret_logger = logging.getLogger('interpret')
-interpret_logger.setLevel(logging.WARNING)
-
 idx = pd.IndexSlice
 
 
@@ -269,18 +266,22 @@ class DIP:
         """
         if C is None:
             C = []
-        assert len(comb) == 2, 'Please provide exactly two sets of features'
+        if len(comb) != 2:
+            raise ValueError('Please provide exactly two sets of features')
         comb_ = list(comb)
         for i in range(len(comb_)):
             if isinstance(comb_[i], str):
                 comb_[i] = [comb_[i]]
             elif isinstance(comb_[i], tuple):
                 comb_[i] = list(comb_[i])
-            else:
-                assert isinstance(comb_[i], list), 'The elements of the combination must be strings or lists'
-            assert all([f in self.fs for f in comb_[i]]), 'Feature not in the dataset'
-        assert len(set(comb_[0]).intersection(set(comb_[1]))) == 0, 'the two sets of features must be disjoint'
-        assert len(set(comb_[0]).union(set(comb_[1])).intersection(set(C))) == 0, 'the conditioning set must be disjoint from the two sets'
+            elif not isinstance(comb_[i], list):
+                raise TypeError('The elements of the combination must be strings or lists')
+            if not all(f in self.fs for f in comb_[i]):
+                raise ValueError('Feature not in the dataset')
+        if len(set(comb_[0]).intersection(set(comb_[1]))) != 0:
+            raise ValueError('The two sets of features must be disjoint')
+        if len(set(comb_[0]).union(set(comb_[1])).intersection(set(C))) != 0:
+            raise ValueError('The conditioning set must be disjoint from the two sets')
         return comb_
                     
     def get(self, comb, order=2, C=None, block_int=None, block_add=None, return_explanation=False, normalized=True):
