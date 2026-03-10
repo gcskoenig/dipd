@@ -1,4 +1,4 @@
-def remove_string_from_list(data, target_strings, level=0):
+def remove_string_from_list(data: list, target_strings: list[str], level: int = 0) -> list:
     if isinstance(data, list):
         res = []
         for item in data:

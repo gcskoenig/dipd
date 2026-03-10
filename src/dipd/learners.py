@@ -1,6 +1,7 @@
 import itertools
 import logging
 import math
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -10,34 +11,38 @@ from interpret.utils._clean_x import preclean_X
 from interpret.glassbox._ebm._bin import ebm_eval_terms
 
 class Predictor:
-    def __init__(self, interactions=0.95, exclude=None):
+    def __init__(self, interactions: float | None = 0.95,
+                 exclude: list[tuple[str, ...]] | None = None) -> None:
         self.interactions = interactions
         self.exclude = exclude
-        self.model = None
+        self.model: Any = None
 
-    def predict(self, X, **kwargs):
+    def predict(self, X: pd.DataFrame, **kwargs: Any) -> np.ndarray:
         fs = sorted(list(X.columns))
         return self.model.predict(X.loc[:, fs], **kwargs)
 
-    def fit(self, X, y):
+    def fit(self, X: pd.DataFrame, y: pd.Series | np.ndarray) -> None:
         fs = sorted(list(X.columns))
         self.model.fit(X.loc[:, fs], y)
 
-    def predict_component(self, X, component):
+    def predict_component(self, X: pd.DataFrame,
+                          component: str | tuple[str, ...] | list[str]) -> np.ndarray | pd.Series:
         pass
 
-    def predict_components(self, X, components):
+    def predict_components(self, X: pd.DataFrame,
+                           components: list[str | tuple[str, ...] | list[str]]) -> np.ndarray | pd.Series:
         return sum([self.predict_component(X, c) for c in components])
 
 
 class LinearGAM(Predictor):
-    def __init__(self, interactions=None, exclude=None):
+    def __init__(self, interactions: float | None = None,
+                 exclude: list[tuple[str, ...]] | None = None) -> None:
         if exclude is None:
             exclude = []
         super().__init__(interactions=interactions, exclude=exclude)
         self.model = None
-        
-    def get_terms(self, X, order=2):
+
+    def get_terms(self, X: pd.DataFrame, order: int = 2) -> list[list[str]]:
         if self.interactions == 0:
             order = 1
         terms = list([itertools.combinations(X.columns, d) for d in range(1, order+1)])
@@ -46,21 +51,21 @@ class LinearGAM(Predictor):
         if self.exclude is not None:
             terms = [p for p in terms if tuple(p) not in self.exclude]
         return terms
-    
-    def __check_interactions(self, X, replace_none=True):
+
+    def __check_interactions(self, X: pd.DataFrame, replace_none: bool = True) -> None:
         n_interactions = math.comb(X.shape[1], 2)
         n_interactions = n_interactions - len(self.exclude)
-        
+
         if self.interactions is None and replace_none:
             self.interactions = n_interactions
-        
+
         if self.interactions != 0 and self.interactions != n_interactions:
             raise ValueError(
                 f'interactions must be 0 or {n_interactions}, got {self.interactions}'
             )
-        
+
     @staticmethod
-    def __get_formula(terms):
+    def __get_formula(terms: list[list[str] | str]) -> str:
         formula = 'y ~'
         first = True
         for term in terms:
@@ -72,15 +77,16 @@ class LinearGAM(Predictor):
             else:
                 formula += ' + ' + term
         return formula
-        
-    def fit(self, X, y):        
+
+    def fit(self, X: pd.DataFrame, y: pd.Series | np.ndarray) -> None:
         self.__check_interactions(X, replace_none=True)
         self.terms = self.get_terms(X)
         self.formula = self.__get_formula(self.terms)
         self.model = smf.ols(formula=self.formula,
                              data=pd.concat([X, y], axis=1)).fit()
-            
-    def predict_component(self, X, component):
+
+    def predict_component(self, X: pd.DataFrame,
+                          component: str | tuple[str, ...] | list[str]) -> pd.Series:
         component_s = component
         if isinstance(component, tuple):
             component_s = list(component_s)
@@ -101,12 +107,14 @@ class LinearGAM(Predictor):
             return pd.Series(0.0, index=X.index)
 
 class EBM(Predictor):
-    
-    def __init__(self, interactions=0.95, exclude=None):
+
+    def __init__(self, interactions: float | None = 0.95,
+                 exclude: list[tuple[str, ...]] | None = None) -> None:
         super().__init__(interactions=interactions, exclude=exclude)
         self.model = ExplainableBoostingRegressor(interactions=interactions, exclude=exclude)
-                        
-    def predict_components(self, X, components):
+
+    def predict_components(self, X: pd.DataFrame,
+                           components: list[str | tuple[str, ...] | list[str]]) -> np.ndarray:
         """
         Due to limitations of the interpret package we can query multiple components at once,
         but can only get the aggregation of the components at once, not the individual contributions.
@@ -122,16 +130,16 @@ class EBM(Predictor):
                 comp_name = ' & '.join(component)
             else:
                 raise NotImplementedError('only str or list of strings supported for component')
-            try:  
+            try:
                 comp_index = self.model.term_names_.index(comp_name)
                 comp_names.append(comp_name)
                 comp_ixs.append(comp_index)
             except ValueError as err:
                 logging.debug(err)
                 logging.debug(f'Probably, component {comp_name} was not found in the model')
-            
+
         comp_ixs = np.array(comp_ixs).astype(int)
-        
+
         # taken from the interpret package
         X, n_samples = preclean_X(X, self.model.feature_names_in_, self.model.feature_types_in_)
         n_scores = 1 if isinstance(self.model.intercept_, float) else len(self.model.intercept_)
@@ -144,10 +152,11 @@ class EBM(Predictor):
             self.model.bins_,
             [self.model.term_scores_[comp_ix] for comp_ix in comp_ixs],
             [self.model.term_features_[comp_ix] for comp_ix in comp_ixs],
-        )        
-        
+        )
+
         return np.sum(explanations, axis=1)
-    
-    def predict_component(self, X, component):
+
+    def predict_component(self, X: pd.DataFrame,
+                          component: str | tuple[str, ...] | list[str]) -> np.ndarray:
         return self.predict_components(X, [component])
 

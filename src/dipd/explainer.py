@@ -10,6 +10,7 @@ from sklearn.metrics import mean_squared_error
 
 from dipd.plots import forceplot
 from dipd.explanation import Explanation, SurplusExplanation, CollabExplanation, FeaturewiseExplanation, OneFixedExplanation
+from dipd.learners import Predictor
 from dipd.utils import remove_string_from_list
 from dipd.consts import RETURN_NAMES
 
@@ -31,7 +32,9 @@ class DIP:
 
     RETURN_NAMES = RETURN_NAMES
 
-    def __init__(self, df, target, learner, test_size=0.2, verbose=False, random_state=None) -> None:
+    def __init__(self, df: pd.DataFrame, target: str, learner: type[Predictor],
+                 test_size: float = 0.2, verbose: bool = False,
+                 random_state: int | None = None) -> None:
         self.df = df
         self.target = target
         self.fs = [col for col in df.columns if col != target]
@@ -44,7 +47,7 @@ class DIP:
         self.Learner = learner
         self.models = {}
         
-    def new_split(self, test_size=None):
+    def new_split(self, test_size: float | None = None) -> None:
             """
             Splits the dataset into training and testing sets.
 
@@ -67,7 +70,8 @@ class DIP:
             self.var_y = np.var(self.y_test)
             self.clear_cache()
             
-    def set_split(self, X_train, X_test, y_train, y_test):
+    def set_split(self, X_train: pd.DataFrame, X_test: pd.DataFrame,
+                  y_train: pd.Series, y_test: pd.Series) -> None:
         """
         Sets the training and testing sets.
 
@@ -87,7 +91,7 @@ class DIP:
         self.var_y = np.var(self.y_test)
         self.clear_cache()
             
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """
         Clears the cache of the decompositions.
         """
@@ -95,7 +99,7 @@ class DIP:
         self.models.clear()
                     
     @staticmethod
-    def __sort_comb(comb, inner_only=False):
+    def __sort_comb(comb: list | tuple, inner_only: bool = False) -> tuple:
         """
         Sorts the combinations in the given `comb` tuple.
 
@@ -115,11 +119,11 @@ class DIP:
         return comb_s
     
     @staticmethod
-    def __make_tuple(comb):
+    def __make_tuple(comb: list | tuple) -> tuple[tuple[str, ...], ...]:
         return tuple([tuple(gr) for gr in comb])
 
     @staticmethod
-    def __adjust_order(comb, res):
+    def __adjust_order(comb: list[list[str]], res: pd.Series) -> pd.Series:
         if DIP.__sort_comb(comb, inner_only=True) == DIP.__sort_comb(comb, inner_only=False):
             return res
         else:
@@ -129,7 +133,8 @@ class DIP:
             return res_s
         
     @staticmethod
-    def __get_terms(fs, order, exclude=None, blocked_fs=None):
+    def __get_terms(fs: list[str], order: int, exclude: list[tuple[str, ...]] | None = None,
+                    blocked_fs: list[str] | None = None) -> list[tuple[str, ...]]:
         """
         Gets all possible terms of a given order for a set of features.
         with exclude specific terms can be excluded, with blocked_fs features can be 
@@ -147,7 +152,9 @@ class DIP:
         return terms
     
     @staticmethod
-    def __get_excluded_terms(comb, order, C=None, blocked_fs=None):
+    def __get_excluded_terms(comb: list[list[str]], order: int,
+                             C: list[str] | None = None,
+                             blocked_fs: list[str] | None = None) -> list[tuple[str, ...]]:
         """
         Get the terms that are not in the combination.
         """
@@ -164,7 +171,8 @@ class DIP:
         return [term for term in all_terms if term not in allowed_terms]
     
     @staticmethod
-    def __get_interaction_terms_involving(fs, comb, order, C=None):
+    def __get_interaction_terms_involving(fs: list[str], comb: list[list[str]], order: int,
+                                          C: list[str] | None = None) -> list[tuple[str, ...]]:
         """
         We have two groups J and RuK where K are the blocked features (fs).
         We want to find all interactions between groups that are not in
@@ -195,7 +203,9 @@ class DIP:
         
         return int_terms_involving_fs_and_J
         
-    def __get_model(self, comb, order, C=None, excluded_terms=None, blocked_fs=None):
+    def __get_model(self, comb: list[list[str]], order: int, C: list[str] | None = None,
+                    excluded_terms: list[tuple[str, ...]] | None = None,
+                    blocked_fs: list[str] | None = None) -> Predictor:
         """
         The comb tuple of tuples indicates which groups of features are allowed to interact.
         The order specifies the max order of interactions.
@@ -251,7 +261,8 @@ class DIP:
             self.models[key] = model
             return model
                 
-    def __assert_comb_valid(self, comb, C=None):
+    def __assert_comb_valid(self, comb: list[str | list[str] | tuple[str, ...]],
+                            C: list[str] | None = None) -> list[list[str]]:
         """
         Asserts that the combination contains two elements, that the features are in the columns, that the 
         two sets are disjoint. If an element is a string, it is converted to a list, such that always a list
@@ -277,7 +288,10 @@ class DIP:
             raise ValueError('The conditioning set must be disjoint from the two sets')
         return comb_
                     
-    def get(self, comb, order=2, C=None, block_int=None, block_add=None, return_explanation=False, normalized=True):
+    def get(self, comb: list[str | list[str] | tuple[str, ...]], order: int = 2,
+            C: list[str] | None = None, block_int: list[str] | None = None,
+            block_add: list[str] | None = None, return_explanation: bool = False,
+            normalized: bool = True) -> pd.Series | FeaturewiseExplanation:
         if C is None:
             C = []
         if block_int is None:
@@ -306,7 +320,9 @@ class DIP:
         else:
             return res_return
         
-    def __compute(self, comb, order=2, C=None, block_int=None, block_add=None):
+    def __compute(self, comb: list[list[str]], order: int = 2, C: list[str] | None = None,
+                  block_int: list[str] | None = None,
+                  block_add: list[str] | None = None) -> pd.Series:
         """
         Computes decomposition for a combination comb conditional on
         a group of features C. Uses GAMs of at most order `order`
@@ -470,7 +486,8 @@ class DIP:
 
         return pd.Series([v_f1, v_f2, v_fC, additive_collab_wo_cov, -2*cov_g1_g2, interactive_collab], index=return_names) 
         
-    def get_all_pairwise(self, only_precomputed=False, return_matrices=False):
+    def get_all_pairwise(self, only_precomputed: bool = False,
+                         return_matrices: bool = False) -> Explanation | tuple[pd.DataFrame, ...]:
         '''
         Gives a detailed decomposition of all features respecting interactions and the dependencies between them
 
@@ -520,7 +537,7 @@ class DIP:
             ex = Explanation('all pairwise', results)
             return ex
         
-    def get_all_pairwise_onefixed(self, feature):
+    def get_all_pairwise_onefixed(self, feature: str) -> OneFixedExplanation:
         '''
         Gives a detailed decomposition of all features respecting interactions and the dependencies between them
 
@@ -541,7 +558,7 @@ class DIP:
         ex = OneFixedExplanation(f'{feature} vs j', scores, feature)
         return ex
     
-    def get_loo(self, feature):
+    def get_loo(self, feature: str) -> SurplusExplanation:
         """
         Computes one vs rest decomposition for a given feature
         """
@@ -550,7 +567,7 @@ class DIP:
         ex = SurplusExplanation(f'{feature} vs rest', res)
         return ex
     
-    def get_all_loo(self):
+    def get_all_loo(self) -> SurplusExplanation:
         """
         Computes one vs rest decomposition for all features
         """
@@ -559,7 +576,7 @@ class DIP:
             results.loc[feature] = self.get_loo(feature).scores
         return SurplusExplanation('one vs rest', results)
     
-    def get_pairs_cond_rest(self, fixed_feature):
+    def get_pairs_cond_rest(self, fixed_feature: str) -> CollabExplanation:
         """
         For a fixed feature, computes pairwise decompositions conditional on the
         respective remainder.
@@ -572,7 +589,7 @@ class DIP:
         ex = CollabExplanation(f'{fixed_feature} vs j | rest', results, feature)
         return ex
     
-    def get_loo_cond_one(self, fixed_feature):
+    def get_loo_cond_one(self, fixed_feature: str) -> CollabExplanation:
         rest = [f for f in self.fs if f != fixed_feature]
         one_vs_rest = self.get([fixed_feature, rest])
         results = pd.DataFrame(index=rest, columns=self.RETURN_NAMES)
@@ -585,7 +602,7 @@ class DIP:
         ex = CollabExplanation(f'({fixed_feature} vs rest) - ({fixed_feature} vs rest | j)', results, feature)
         return ex
     
-    def get_loo_ablation(self, fixed_feature, blocktype='remainder'):
+    def get_loo_ablation(self, fixed_feature: str, blocktype: str = 'remainder') -> CollabExplanation:
         rest = [f for f in self.fs if f != fixed_feature]
         results = pd.DataFrame(index=rest, columns=self.RETURN_NAMES)
         full = self.get([fixed_feature, rest])

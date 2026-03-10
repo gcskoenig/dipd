@@ -1,3 +1,4 @@
+import matplotlib.axes as mpl_axes
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import seaborn as sns
@@ -9,12 +10,17 @@ from dipd.consts import FORCEPLOT_COLOR_DICT
 
 idx = pd.IndexSlice
 
-def forceplot(data, title, figsize=None, ax=None, split_additive=False, color_dict=None,
-              explain_surplus=False, rest_feature=2, explain_collab=False, xticks=True,
-              xticklabel_rotation=45, center_additive_total=False,
-              hline_width=1.0, bar_width=0.6, separator_ident_prop=0.05, hline_thickness=1,
-              total_color=None, fontsize=7, fontname='Helvetica', ylabel='Normalized Scores',
-              sort_by='score'):
+def forceplot(data: pd.DataFrame, title: str, figsize: tuple[float, float] | None = None,
+              ax: mpl_axes.Axes | None = None, split_additive: bool = False,
+              color_dict: dict[str, str] | None = None,
+              explain_surplus: bool = False, rest_feature: int = 2,
+              explain_collab: bool = False, xticks: bool = True,
+              xticklabel_rotation: float = 45, center_additive_total: bool = False,
+              hline_width: float = 1.0, bar_width: float = 0.6,
+              separator_ident_prop: float = 0.05, hline_thickness: float = 1,
+              total_color: str | None = None, fontsize: float = 7,
+              fontname: str = 'Helvetica', ylabel: str = 'Normalized Scores',
+              sort_by: str = 'score') -> mpl_axes.Axes:
     """
     Forceplot that takes the results of decompositions and plots them as a stacked bar plot.
     data: pd.DataFrame with the decomposition scores as index and the columns as the features
