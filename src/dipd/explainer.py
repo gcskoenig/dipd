@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 import pandas as pd
-import tqdm
+from tqdm.auto import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
@@ -509,7 +509,7 @@ class DIP:
             additive_collab_wo_cov = pd.DataFrame(index=self.fs, columns=self.fs, dtype=float)
             synergetic_collab = pd.DataFrame(index=self.fs, columns=self.fs, dtype=float)
             
-            for comb in tqdm.tqdm(combinations):
+            for comb in tqdm(combinations):
                 res = self.get(comb)
                 # hacky but works
                 vars_bivariate.loc[comb[0], comb[0]] = res[self.RETURN_NAMES[0]]
@@ -531,7 +531,7 @@ class DIP:
         else:                
             results = pd.DataFrame(combinations, columns=['feature1', 'feature2'])
             results.set_index(['feature1', 'feature2'], inplace=True)
-            for comb in tqdm.tqdm(combinations):
+            for comb in tqdm(combinations):
                 res = self.get(comb)
                 results.loc[tuple(comb), res.index] = res
                 res2 = self.get(comb[::-1])
@@ -550,7 +550,7 @@ class DIP:
         combinations = [[feature, col] for col in self.fs if col != feature]
         results = pd.DataFrame(combinations, columns=['feature1', 'feature2'])
         results.set_index(['feature1', 'feature2'], inplace=True)
-        for comb in tqdm.tqdm(combinations):
+        for comb in tqdm(combinations):
             res = self.get(comb)
             results.loc[tuple(comb), res.index] = res
             res_flip = res.rename({self.RETURN_NAMES[0]: self.RETURN_NAMES[1],
@@ -574,7 +574,7 @@ class DIP:
         Computes one vs rest decomposition for all features
         """
         results = pd.DataFrame(index=self.fs, columns=self.RETURN_NAMES)
-        for feature in tqdm.tqdm(self.fs):
+        for feature in tqdm(self.fs):
             results.loc[feature] = self.get_loo(feature).scores
         return SurplusExplanation('one vs rest', results)
     
@@ -585,7 +585,7 @@ class DIP:
         """
         rest = [f for f in self.fs if f != fixed_feature]
         results = pd.DataFrame(index=rest, columns=self.RETURN_NAMES)
-        for feature in tqdm.tqdm(rest):
+        for feature in tqdm(rest):
             C = [f for f in rest if f != feature]
             results.loc[feature] = self.get([[fixed_feature], [feature]], C=C)
         ex = CollabExplanation(f'{fixed_feature} vs j | rest', results, feature)
@@ -595,7 +595,7 @@ class DIP:
         rest = [f for f in self.fs if f != fixed_feature]
         one_vs_rest = self.get([fixed_feature, rest])
         results = pd.DataFrame(index=rest, columns=self.RETURN_NAMES)
-        for feature in tqdm.tqdm(rest):
+        for feature in tqdm(rest):
             R = [f for f in rest if f != feature]
             if len(R) == 0:
                 raise ValueError('The rest set must contain at least one feature')
@@ -608,7 +608,7 @@ class DIP:
         rest = [f for f in self.fs if f != fixed_feature]
         results = pd.DataFrame(index=rest, columns=self.RETURN_NAMES)
         full = self.get([fixed_feature, rest])
-        for feature in tqdm.tqdm(rest):
+        for feature in tqdm(rest):
             if blocktype == 'remainder':
                 blockfs = [f for f in rest if f != feature]
             elif blocktype == 'one':
