@@ -12,7 +12,8 @@ from interpret.glassbox._ebm._bin import ebm_eval_terms
 
 class Predictor:
     def __init__(self, interactions: float | None = 0.95,
-                 exclude: list[tuple[str, ...]] | None = None) -> None:
+                 exclude: list[tuple[str, ...]] | None = None,
+                 **kwargs: Any) -> None:
         self.interactions = interactions
         self.exclude = exclude
         self.model: Any = None
@@ -36,7 +37,8 @@ class Predictor:
 
 class LinearGAM(Predictor):
     def __init__(self, interactions: float | None = None,
-                 exclude: list[tuple[str, ...]] | None = None) -> None:
+                 exclude: list[tuple[str, ...]] | None = None,
+                 **kwargs: Any) -> None:
         if exclude is None:
             exclude = []
         super().__init__(interactions=interactions, exclude=exclude)
@@ -109,9 +111,10 @@ class LinearGAM(Predictor):
 class EBM(Predictor):
 
     def __init__(self, interactions: float | None = 0.95,
-                 exclude: list[tuple[str, ...]] | None = None) -> None:
+                 exclude: list[tuple[str, ...]] | None = None,
+                 **kwargs: Any) -> None:
         super().__init__(interactions=interactions, exclude=exclude)
-        self.model = ExplainableBoostingRegressor(interactions=interactions, exclude=exclude)
+        self.model = ExplainableBoostingRegressor(interactions=interactions, exclude=exclude, **kwargs)
 
     def predict_components(self, X: pd.DataFrame,
                            components: list[str | tuple[str, ...] | list[str]]) -> np.ndarray:

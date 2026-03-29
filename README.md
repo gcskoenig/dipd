@@ -9,14 +9,14 @@ The DIP decomposition was introduced in [this paper](https://arxiv.org/pdf/2410.
 
 `dipd` requires **Python 3.11** or newer and can be installed from PyPI:
 ```
-pip install dipd
+uv pip install dipd
 ```
 
 For a development installation, clone the repository and install in editable mode:
 ```
 git clone https://github.com/gcskoenig/dipd
 cd dipd
-pip install -e .
+uv pip install -e .
 ```
 
 ## Usage

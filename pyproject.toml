@@ -7,7 +7,6 @@ name = "dipd"
 version = "0.0.1"
 authors = [
   { name="Gunnar König", email="g.koenig.edu@pm.me" },
-  { name="Eric Günther", email="eric.guenther@uni-tuebingen.de" },
 ]
 description = "Disentangling Interactions and Dependencies (DIP) Decomposition."
 readme = "README.md"

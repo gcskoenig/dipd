@@ -34,12 +34,14 @@ class DIP:
 
     def __init__(self, df: pd.DataFrame, target: str, learner: type[Predictor],
                  test_size: float = 0.2, verbose: bool = False,
-                 random_state: int | None = None) -> None:
+                 random_state: int | None = None,
+                 learner_kwargs: dict | None = None) -> None:
         self.df = df
         self.target = target
         self.fs = [col for col in df.columns if col != target]
         self.test_size = test_size
         self.random_state = random_state
+        self.learner_kwargs = learner_kwargs or {}
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(df[self.fs], df[target], test_size=test_size, random_state=random_state)
         self.var_y = np.var(self.y_test)
         self.verbose = verbose
@@ -252,9 +254,9 @@ class DIP:
                                                                        blocked_fs=blocked_fs)
             # fit model
             if len(excluded_terms) == 0:
-                model = self.Learner(exclude=None)
+                model = self.Learner(exclude=None, **self.learner_kwargs)
             else:
-                model = self.Learner(exclude=excluded_terms)
+                model = self.Learner(exclude=excluded_terms, **self.learner_kwargs)
             model.fit(self.X_train.loc[:, fs_full], y_res_C_train)
             
             # store model and return result
@@ -422,14 +424,14 @@ class DIP:
         if len(C) > 0:
                         
             # regressing X_C out of g1
-            model_g1 = self.Learner()
+            model_g1 = self.Learner(**self.learner_kwargs)
             model_g1.fit(self.X_train[C], g1_train)
             g1_pred_test = model_g1.predict(self.X_test[C])
             g1_res_test = g1_test - g1_pred_test
             g1_res_train = g1_train - model_g1.predict(self.X_train[C])
             
             # regressing X_C out of g2
-            model_g2 = self.Learner()
+            model_g2 = self.Learner(**self.learner_kwargs)
             model_g2.fit(self.X_train[C], g2_train)
             g2_pred_test = model_g2.predict(self.X_test[C])
             g2_res_test = g2_test - g2_pred_test
@@ -457,14 +459,14 @@ class DIP:
             if len(comb_wo_block[1]) == 0:
                 red1 = 0
             else:
-                model_g1_x2 = self.Learner()
+                model_g1_x2 = self.Learner(**self.learner_kwargs)
                 model_g1_x2.fit(self.X_train[comb_wo_block[1]], g1_res_train)
                 red1 = np.var(g1_res_test - np.mean(g1_res_test)) - mean_squared_error(g1_res_test,
                                                                                     model_g1_x2.predict(self.X_test[comb_wo_block[1]]))
             if len(comb_wo_block[0]) == 0:
                 red2 = 0
             else:
-                model_g2_x1 = self.Learner()
+                model_g2_x1 = self.Learner(**self.learner_kwargs)
                 model_g2_x1.fit(self.X_train[comb_wo_block[0]], g2_res_train)
                 red2 = np.var(g2_res_test - np.mean(g2_res_test)) - mean_squared_error(g2_res_test,
                                                                                     model_g2_x1.predict(self.X_test[comb_wo_block[0]]))
