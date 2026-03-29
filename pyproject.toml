@@ -27,6 +27,9 @@ dependencies = [
   "statsmodels",
 ]
 
+[project.optional-dependencies]
+spline = ["pygam"]
+
 [tool.hatchling.build]
 exclude = [
   "**/__pycache__",

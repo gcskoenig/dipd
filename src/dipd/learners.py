@@ -10,6 +10,8 @@ from interpret.glassbox import ExplainableBoostingRegressor
 from interpret.utils._clean_x import preclean_X
 from interpret.glassbox._ebm._bin import ebm_eval_terms
 
+logger = logging.getLogger(__name__)
+
 class Predictor:
     def __init__(self, interactions: float | None = 0.95,
                  exclude: list[tuple[str, ...]] | None = None,
@@ -163,3 +165,109 @@ class EBM(Predictor):
                           component: str | tuple[str, ...] | list[str]) -> np.ndarray:
         return self.predict_components(X, [component])
 
+
+class SplineGAM(Predictor):
+    """Spline-based GAM learner using pyGAM.
+
+    Fits a generalized additive model with spline main effects and optional
+    tensor-product interaction terms via the ``pygam`` library.
+    """
+
+    def __init__(self, interactions: float | None = 0.95,
+                 exclude: list[tuple[str, ...]] | None = None,
+                 n_splines: int = 25,
+                 **kwargs: Any) -> None:
+        super().__init__(interactions=interactions, exclude=exclude)
+        self.n_splines = n_splines
+        self.kwargs = kwargs
+        self._name_to_idx: dict[str, int] = {}
+        self._term_map: dict[str | tuple[str, ...], int] = {}
+
+    @staticmethod
+    def _import_pygam():  # noqa: ANN205
+        try:
+            import pygam
+            return pygam
+        except ImportError:
+            raise ImportError(
+                "SplineGAM requires pygam. Install with: pip install dipd[spline]"
+            ) from None
+
+    def _build_terms(self, feature_names: list[str]):  # noqa: ANN205
+        """Build pygam TermList from feature names and interaction settings."""
+        pygam = self._import_pygam()
+
+        terms = None
+        for name in feature_names:
+            idx = self._name_to_idx[name]
+            t = pygam.s(idx, n_splines=self.n_splines)
+            terms = t if terms is None else terms + t
+
+        if self.interactions != 0:
+            pairs = list(itertools.combinations(feature_names, 2))
+
+            if self.exclude:
+                exclude_set = {tuple(sorted(e)) for e in self.exclude}
+                pairs = [p for p in pairs if tuple(sorted(p)) not in exclude_set]
+
+            if isinstance(self.interactions, float) and 0 < self.interactions <= 1:
+                n_keep = max(1, int(round(self.interactions * len(pairs))))
+                pairs = pairs[:n_keep]
+            # interactions=None means keep all remaining pairs
+
+            for a, b in pairs:
+                t = pygam.te(self._name_to_idx[a], self._name_to_idx[b],
+                             n_splines=self.n_splines)
+                terms = terms + t
+
+        return terms
+
+    def fit(self, X: pd.DataFrame, y: pd.Series | np.ndarray) -> None:
+        pygam = self._import_pygam()
+
+        fs = sorted(list(X.columns))
+        self._name_to_idx = {name: i for i, name in enumerate(fs)}
+
+        terms = self._build_terms(fs)
+        self.model = pygam.LinearGAM(terms, **self.kwargs)
+        self.model.fit(X.loc[:, fs].values, np.asarray(y))
+
+        # Build term map: pygam term index -> component key
+        self._term_map = {}
+        idx_to_name = {v: k for k, v in self._name_to_idx.items()}
+        for term_idx, term in enumerate(self.model.terms):
+            term_type = term.info.get('term_type', '')
+            if term_type == 'intercept_term':
+                continue
+            feature = term.feature
+            if feature is None:
+                continue
+            if isinstance(feature, (list, tuple)):
+                names = [idx_to_name[int(fi)] for fi in feature]
+                self._term_map[tuple(sorted(names))] = term_idx
+            else:
+                self._term_map[idx_to_name[int(feature)]] = term_idx
+
+    def predict(self, X: pd.DataFrame, **kwargs: Any) -> np.ndarray:
+        fs = sorted(list(X.columns))
+        return self.model.predict(X.loc[:, fs].values)
+
+    def predict_component(self, X: pd.DataFrame,
+                          component: str | tuple[str, ...] | list[str]) -> np.ndarray:
+        fs = sorted(list(X.columns))
+        X_array = X.loc[:, fs].values
+
+        # Normalize component to lookup key
+        if isinstance(component, list):
+            key: str | tuple[str, ...] = tuple(sorted(component))
+        elif isinstance(component, tuple):
+            key = tuple(sorted(component))
+        else:
+            key = component
+
+        term_idx = self._term_map.get(key)
+        if term_idx is None:
+            logger.debug(f"Component {key} not found in model terms, returning zeros")
+            return np.zeros(X.shape[0])
+
+        return self.model.partial_dependence(term=term_idx, X=X_array)
