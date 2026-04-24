@@ -39,7 +39,10 @@ df = encoder.fit_transform(df)
 from dipd import DIP
 from dipd.learners import EBM
 
-explainer = DIP(df, target_variable, EBM)
+# exemplary hyperparameters for the EBM learner (passed to ExplainableBoostingRegressor)
+learner_kwargs = {'max_rounds': 500, 'learning_rate': 0.05}
+
+explainer = DIP(df, target_variable, EBM, learner_kwargs=learner_kwargs)
 explanation = explainer.get_all_loo()
 print(explanation.scores)
 
