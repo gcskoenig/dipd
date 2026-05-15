@@ -42,7 +42,7 @@ from dipd.learners import EBM
 # exemplary hyperparameters for the EBM learner (passed to ExplainableBoostingRegressor)
 learner_kwargs = {'max_rounds': 500, 'learning_rate': 0.05}
 
-explainer = DIP(df, target_variable, EBM, learner_kwargs=learner_kwargs)
+explainer = DIP(df, target_variable, EBM, random_state=42, learner_kwargs=learner_kwargs)
 explanation = explainer.get_all_loo()
 print(explanation.scores)
 
@@ -65,6 +65,8 @@ The code produces the following plot.
 The plot can be interpreted as follows: Each bar explains one LOCO score as the sum of standalone contribution (gray)
  and the contributions of interactions (green) and dependencies (purple).
  Each bar is visualized as a forceplot, meaning that the direction of each bar indicates the sign, where downward facing bars are negative contributions and upward facing bars positive contributions. The bars sum up to the black horizontal lines, which are the LOCO scores of the features.
+
+Passing `random_state` to `DIP` seeds both the internal train/test split and all sub-models that get fitted during the decomposition, so back-to-back runs with the same seed are fully reproducible.
 
 By default `DIP` performs an internal train/test split on the supplied DataFrame. If you want to set a particular train/test split you can also do:
 
