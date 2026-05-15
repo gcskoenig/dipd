@@ -41,7 +41,9 @@ class DIP:
         self.fs = [col for col in df.columns if col != target]
         self.test_size = test_size
         self.random_state = random_state
-        self.learner_kwargs = learner_kwargs or {}
+        self.learner_kwargs = dict(learner_kwargs) if learner_kwargs else {}
+        if random_state is not None and 'random_state' not in self.learner_kwargs:
+            self.learner_kwargs['random_state'] = random_state
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(df[self.fs], df[target], test_size=test_size, random_state=random_state)
         self.var_y = np.var(self.y_test)
         self.verbose = verbose
