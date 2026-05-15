@@ -65,3 +65,18 @@ The code produces the following plot.
 The plot can be interpreted as follows: Each bar explains one LOCO score as the sum of standalone contribution (gray)
  and the contributions of interactions (green) and dependencies (purple).
  Each bar is visualized as a forceplot, meaning that the direction of each bar indicates the sign, where downward facing bars are negative contributions and upward facing bars positive contributions. The bars sum up to the black horizontal lines, which are the LOCO scores of the features.
+
+By default `DIP` performs an internal train/test split on the supplied DataFrame. If you want to set a particular train/test split you can also do:
+
+```python
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(
+    df.drop(columns=[target_variable]), df[target_variable],
+    test_size=0.2, random_state=42,
+)
+
+explainer = DIP(df, target_variable, EBM, learner_kwargs=learner_kwargs)
+explainer.set_split(X_train, X_test, y_train, y_test)
+explanation = explainer.get_all_loo()
+```
