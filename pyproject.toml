@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dipd"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
   { name="Gunnar König", email="g.koenig.edu@pm.me" },
 ]
@@ -19,7 +19,7 @@ classifiers = [
 dependencies = [
   "numpy",
   "pandas",
-  "interpret>=0.7.6,<0.8.0",
+  "interpret-core>=0.7.6,<0.8.0",
   "matplotlib",
   "seaborn",
   "tqdm",
